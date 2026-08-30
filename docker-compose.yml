@@ -1,0 +1,57 @@
+services:
+  blockchain:
+    build: ./contracts
+    container_name: living-nft-blockchain
+    ports:
+      - "8545:8545"
+    networks:
+      - nft-net
+    restart: unless-stopped
+
+  redis:
+    image: redis:alpine
+    container_name: living-nft-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - nft-net
+    restart: unless-stopped
+
+  api:
+    build: ./backend
+    container_name: living-nft-api
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=development
+      - PORT=3001
+      - RPC_URL=http://blockchain:8545
+      - REDIS_URL=redis://redis:6379
+      - OLLAMA_URL=http://host.docker.internal:11434
+      - OLLAMA_MODEL=llama3.2
+      - OLLAMA_LOGIC_MODEL=genagautier/qwen3.5:9b
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - blockchain
+      - redis
+    networks:
+      - nft-net
+    restart: unless-stopped
+
+  web:
+    build: ./frontend
+    container_name: living-nft-web
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:3001
+    depends_on:
+      - api
+    networks:
+      - nft-net
+    restart: unless-stopped
+
+networks:
+  nft-net:
+    driver: bridge
